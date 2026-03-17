@@ -61,7 +61,40 @@ workflow.wait_for(ElementSelector(role="AXButton", title="Play"))
 workflow.run_with_retry(actions, max_retries=3)
 ```
 
+## MCP Server (Model Context Protocol)
+
+`mac-maestro` can be run as an MCP server, allowing AI agents (like Claude Desktop, Cursor, or Gemini) to interact with your macOS UI directly.
+
+### Installation & Setup
+
+1. **Install with MCP support**:
+   ```bash
+   pip install "mac-maestro[mcp]"
+   ```
+
+2. **Configure your client**:
+   Add the following to your MCP settings file (e.g., `cursor_settings.json` or `claude_desktop_config.json`):
+
+   ```json
+   {
+     "mcpServers": {
+       "mac-maestro": {
+         "command": "python3",
+         "args": ["-m", "mac_maestro.mcp_server"]
+       }
+     }
+   }
+   ```
+
+### Exposed Tools
+
+- `get_ui_snapshot`: Captures the Accessibility tree of a specific app or the whole system.
+- `click_element`: Clicks UI components using semantic selectors (role, title, text).
+- `type_in_app`: Focuses an app and types text.
+- `press_key`: Sends raw key-press events (e.g., "enter", "escape").
+
 ## Architecture
+
 
 ```mermaid
 graph TD
