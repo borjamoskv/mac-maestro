@@ -5,12 +5,20 @@ import time
 from unittest.mock import patch
 
 from mac_maestro import MacMaestro, TypeAction
-from mac_maestro.backends.ax import AXBackend, AXBackendConfig
 from mac_maestro.errors import ActionExecutionError
 from mac_maestro.models import ElementMatch, AXNodeSnapshot
 
+try:
+    from mac_maestro.backends.ax import AXBackend, AXBackendConfig
 
-pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="Tests strictly require macOS Native AX backend.")
+    _HAS_AX = True
+except ImportError:
+    _HAS_AX = False
+
+pytestmark = [
+    pytest.mark.skipif(sys.platform != "darwin", reason="Requires macOS."),
+    pytest.mark.skipif(not _HAS_AX, reason="pyobjc not installed — AXBackend unavailable."),
+]
 
 
 @pytest.fixture
