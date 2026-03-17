@@ -96,10 +96,35 @@ class RunTrace(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ok: bool
+    dry_run: bool = False
+    error: str | None = None
     events: list[TraceEvent] = Field(default_factory=list)
+    candidates: list[ElementMatch] = Field(default_factory=list)
 
     def to_json(self) -> str:
         return self.model_dump_json(indent=2)
+
+    def to_ndjson(self) -> str:
+        """Emit one JSON line per event for streaming / log ingestion."""
+        import json
+
+        lines: list[str] = []
+        # Header line with trace metadata
+        lines.append(
+            json.dumps(
+                {
+                    "type": "trace_start",
+                    "ok": self.ok,
+                    "dry_run": self.dry_run,
+                    "error": self.error,
+                }
+            )
+        )
+        for event in self.events:
+            lines.append(json.dumps(event.model_dump(mode="json")))
+        lines.append(json.dumps({"type": "trace_end", "ok": self.ok}))
+        return "\n".join(lines)
+
 
 
 def walk_nodes(root: AXNodeSnapshot) -> Sequence[AXNodeSnapshot]:

@@ -1,5 +1,6 @@
 from .errors import (
     ActionExecutionError,
+    ConfidenceBelowThresholdError,
     ElementAmbiguousError,
     ElementNotFoundError,
     MacMaestroError,
@@ -36,4 +37,5 @@ __all__ = [
     "ElementAmbiguousError",
     "ActionExecutionError",
     "SafetyViolationError",
+    "ConfidenceBelowThresholdError",
 ]

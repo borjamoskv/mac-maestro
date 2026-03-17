@@ -120,3 +120,23 @@ def find_best_match(root: AXNodeSnapshot, selector: ElementSelector) -> ElementM
             )
 
     return best
+
+
+def find_all_matches(
+    root: AXNodeSnapshot,
+    selector: ElementSelector,
+    weights: MatchWeights | None = None,
+) -> list[ElementMatch]:
+    """Return all matching elements sorted by confidence (descending).
+
+    Unlike find_best_match, this does not raise on ambiguity or zero results.
+    Useful for dry-run candidate inspection and emit_candidates policy.
+    """
+    candidates = [
+        match
+        for node in walk_nodes(root)
+        if (match := score_node(node, selector, weights)) is not None
+    ]
+    candidates.sort(key=lambda m: m.confidence, reverse=True)
+    return candidates
+
