@@ -1,48 +1,52 @@
-# MacMaestro (MAC-MAESTRO-Ω v3.0)
+# MacMaestro (MAC-MAESTRO-Ω v0.1.0)
 
-Sovereign UI automation for macOS using the native Accessibility (AX) API. Designed for high-reliability, deterministic execution, and safety.
+**Semantic-first macOS GUI automation with safety gates and structured traces.**
 
-## Features
+Stop relying on brittle coordinate clicks (`x: 100, y: 200`) and pixel-matching. MacMaestro uses the native macOS Accessibility (AX) API to understand the semantic structure of any application, delivering robust and deterministic automation workflows for autonomous AI agents.
 
-- **Semantic-First Matching**: Match elements by role, title, value, or description with a fuzzy scoring system.
-- **Action Ladder**: Native AX actions (clicks, typing) with robust fallbacks to `CGEvent` mouse and keyboard events.
-- **Safety Policy**: Built-in gating to prevent accidental clicks on dangerous UI elements (e.g., "Delete", "Format").
-- **Structured Tracing**: Every run yields a comprehensive `RunTrace` with snapshots of the UI at each step, matched nodes, and detailed error logs.
-- **High-Level Workflows**: Orchestration layer for handling retries, waiting for elements, and complex recovery logic.
+## Why not another PyAutoGUI wrapper?
+
+Most desktop automation libraries fail when windows move, resolutions change, or UI focus shifts. MacMaestro solves this by reading the actual UI graph:
+
+- **Semantic-First Matching**: Target elements by intent (`role="AXButton"`, `title="Submit"`).
+- **AX Native Execution**: Bypasses the mouse cursor entirely for typing and clicking when possible.
+- **Safety Membrane**: Immutable policies that prevent your AI agent from clicking dangerous elements (e.g., "Delete", "Format").
+- **Observable by Default**: Every action generates a detailed, nested JSON `RunTrace` showing exactly what the system saw and what it clicked.
+
+---
+
+> ⚠️ **Accessibility Permissions**: MacMaestro requires the terminal or host app running it to be granted **Accessibility** permissions in macOS (`System Settings > Privacy & Security > Accessibility`).
 
 ## Installation
 
 ```bash
-pip install -e ".[macos]"
+pip install "mac-maestro[macos,mcp]"
 ```
 
-*Note: Requires macOS and appropriate Accessibility permissions.*
+## Quick Start: 20-Second Demo
 
-## Quick Start
+Here is how you control an application like TextEdit without ever hardcoding a screen coordinate.
 
 ```python
-from mac_maestro import MacMaestro, ClickAction, TypeAction, KeyModifier
+from mac_maestro import MacMaestro, ClickAction, TypeAction
 
-# Initialize for a specific application
+# Connect directly to the application's semantic graph
 maestro = MacMaestro(bundle_id="com.apple.TextEdit")
 
-# Define a sequence of actions
+# Declare intent
 actions = [
     ClickAction(role="AXButton", title="New Document"),
-    TypeAction(text="Hello, MacMaestro!", clear_first=True),
-    # More complex matching
-    ClickAction(role="AXMenuItem", title="Save", contains_text="Save"),
+    TypeAction(text="Automation without x/y coordinates. 🚀")
 ]
 
-# Execute and get trace
+# Execute deterministically
 trace = maestro.run(actions)
 
-if trace.ok:
-    print("Automation successful!")
-else:
-    print(f"Failed: {trace.error}")
-    print(trace.to_json())
+print("Success!" if trace.ok else f"Failed: {trace.error}")
+print(trace.to_json()) # Structured data for your autonomous agent
 ```
+
+*See `examples/demo_textedit.py` for a fully runnable version.*
 
 ## Advanced Usage: Workflows
 
