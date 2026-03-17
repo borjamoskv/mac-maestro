@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mac-maestro"
-version = "0.1.0"
+version = "0.2.1"
 description = "Semantic-first macOS GUI automation with safety gates and structured traces."
 readme = "README.md"
 requires-python = ">=3.11"

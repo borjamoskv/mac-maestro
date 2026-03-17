@@ -12,20 +12,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
         cache: "pip"
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-        
-    # Note: Accessibility permission issues might block some tests in CI.
-    # Future iterations will utilize a mock backend for CI/CD checks.
+        pip install -e ".[dev,macos]"
+
     - name: Run tests with pytest
       run: |
-        pytest
+        pytest -v

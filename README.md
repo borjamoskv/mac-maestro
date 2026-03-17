@@ -1,115 +1,127 @@
-# MacMaestro (MAC-MAESTRO-Ω v0.1.0)
+# mac-maestro
 
-**Semantic-first macOS GUI automation with safety gates and structured traces.**
+Semantic-first macOS GUI automation with safety gates and structured traces.
 
-Stop relying on brittle coordinate clicks (`x: 100, y: 200`) and pixel-matching. MacMaestro uses the native macOS Accessibility (AX) API to understand the semantic structure of any application, delivering robust and deterministic automation workflows for autonomous AI agents.
+> Stop relying on brittle coordinate clicks. `mac-maestro` reads the native macOS Accessibility graph to match UI elements by **intent** — not pixels.
 
-## Why not another PyAutoGUI wrapper?
+## Why
 
-Most desktop automation libraries fail when windows move, resolutions change, or UI focus shifts. MacMaestro solves this by reading the actual UI graph:
+| | PyAutoGUI / pixel bots | mac-maestro |
+|:---|:---|:---|
+| Targeting | `x: 100, y: 200` | `role="AXButton", title="Save"` |
+| Window moves | Breaks | Works |
+| Resolution changes | Breaks | Works |
+| Safety | None | Immutable policy membrane |
+| Observability | Logs | Structured `RunTrace` (JSON/NDJSON) |
 
-- **Semantic-First Matching**: Target elements by intent (`role="AXButton"`, `title="Submit"`).
-- **AX Native Execution**: Bypasses the mouse cursor entirely for typing and clicking when possible.
-- **Safety Membrane**: Immutable policies that prevent your AI agent from clicking dangerous elements (e.g., "Delete", "Format").
-- **Observable by Default**: Every action generates a detailed, nested JSON `RunTrace` showing exactly what the system saw and what it clicked.
+## Features
 
----
+- **Semantic matching** by role, title, value — walks the AX tree, scores candidates
+- **Safety policy** blocks destructive actions (`"Delete"`, `"Format"`) before execution
+- **Dry-run mode** resolves and matches without mutating the UI
+- **Confidence thresholds** with configurable policies: `abort`, `fallback_exact`, `emit_candidates`
+- **Structured traces** — every action emits JSON events; `to_ndjson()` for streaming
+- **Backend abstraction** — `MockBackend` for tests, `AXBackend` for real macOS automation
+- **Native AX execution** — `AXPress` and `AXSetValue` bypass the mouse cursor entirely
 
-> ⚠️ **Accessibility Permissions**: MacMaestro requires the terminal or host app running it to be granted **Accessibility** permissions in macOS (`System Settings > Privacy & Security > Accessibility`).
-
-## Installation
+## Install
 
 ```bash
-pip install "mac-maestro[macos,mcp]"
+pip install mac-maestro              # Core (works anywhere)
+pip install "mac-maestro[macos]"     # + native AX backend (macOS only)
 ```
 
-## Quick Start: 20-Second Demo
+> ⚠️ **Accessibility Permissions**: The terminal or host app must be granted **Accessibility** access in `System Settings > Privacy & Security > Accessibility`.
 
-Here is how you control an application like TextEdit without ever hardcoding a screen coordinate.
+## Quick Start
+
+Works on any platform with `MockBackend` — no macOS permissions needed:
 
 ```python
-from mac_maestro import MacMaestro, ClickAction, TypeAction
+from mac_maestro import MacMaestro, ClickAction
+from mac_maestro.backends.mock import MockBackend
+from mac_maestro.models import AXNodeSnapshot
 
-# Connect directly to the application's semantic graph
-maestro = MacMaestro(bundle_id="com.apple.TextEdit")
+# Build a mock UI tree
+root = AXNodeSnapshot(
+    element_id="root",
+    role="AXWindow",
+    title="Main",
+    children=[
+        AXNodeSnapshot(element_id="save_btn", role="AXButton", title="Save"),
+        AXNodeSnapshot(element_id="cancel_btn", role="AXButton", title="Cancel"),
+    ],
+)
 
-# Declare intent
-actions = [
-    ClickAction(role="AXButton", title="New Document"),
-    TypeAction(text="Automation without x/y coordinates. 🚀")
-]
+maestro = MacMaestro(
+    bundle_id="com.example.app",
+    backend=MockBackend(root=root),
+)
 
-# Execute deterministically
-trace = maestro.run(actions)
+trace = maestro.run([ClickAction(role="AXButton", title="Save")])
 
-print("Success!" if trace.ok else f"Failed: {trace.error}")
-print(trace.to_json()) # Structured data for your autonomous agent
+print("✅" if trace.ok else "❌")
+print(trace.to_json())
 ```
 
-*See `examples/demo_textedit.py` for a fully runnable version.*
+## Advanced
 
-## Advanced Usage: Workflows
+### Dry-Run Mode
 
-Use `MaestroWorkflow` for robust automation that handles UI delays.
+Resolve elements and score candidates without touching the UI:
 
 ```python
-from mac_maestro import MacMaestro, MaestroWorkflow, ElementSelector
-
-maestro = MacMaestro(bundle_id="com.apple.Music")
-workflow = MaestroWorkflow(maestro)
-
-# Wait for an element to appear (up to 10s)
-workflow.wait_for(ElementSelector(role="AXButton", title="Play"))
-
-# Run with retries
-workflow.run_with_retry(actions, max_retries=3)
+trace = maestro.run(actions, dry_run=True)
+# trace.ok is True, but no UI mutation occurred
 ```
 
-## MCP Server (Model Context Protocol)
+### Confidence Thresholds
 
-`mac-maestro` can be run as an MCP server, allowing AI agents (like Claude Desktop, Cursor, or Gemini) to interact with your macOS UI directly.
+Reject low-confidence matches before they execute:
 
-### Installation & Setup
+```python
+maestro = MacMaestro(
+    bundle_id="com.apple.TextEdit",
+    backend=backend,
+    min_confidence=0.75,
+    on_below_threshold="abort",  # or "fallback_exact", "emit_candidates"
+)
+```
 
-1. **Install with MCP support**:
-   ```bash
-   pip install "mac-maestro[mcp]"
-   ```
+### Safety Policy
 
-2. **Configure your client**:
-   Add the following to your MCP settings file (e.g., `cursor_settings.json` or `claude_desktop_config.json`):
+Block dangerous interactions at the membrane level:
 
-   ```json
-   {
-     "mcpServers": {
-       "mac-maestro": {
-         "command": "python3",
-         "args": ["-m", "mac_maestro.mcp_server"]
-       }
-     }
-   }
-   ```
+```python
+from mac_maestro.safety import SafetyPolicy
 
-### Exposed Tools
+policy = SafetyPolicy(blocked_titles=["Delete All", "Format Disk"])
+maestro = MacMaestro(bundle_id="...", backend=backend, safety_policy=policy)
+# ClickAction(title="Delete All") → SafetyViolationError
+```
 
-- `get_ui_snapshot`: Captures the Accessibility tree of a specific app or the whole system.
-- `click_element`: Clicks UI components using semantic selectors (role, title, text).
-- `type_in_app`: Focuses an app and types text.
-- `press_key`: Sends raw key-press events (e.g., "enter", "escape").
+### NDJSON Traces
+
+Stream trace events for log ingestion:
+
+```python
+print(trace.to_ndjson())
+# One JSON line per event — ready for jq, Datadog, or CORTEX
+```
 
 ## Architecture
 
-
 ```mermaid
 graph TD
-    User([User Script]) --> Workflow[MaestroWorkflow]
-    Workflow --> Runtime[MacMaestro Runtime]
+    User([Script / Agent]) --> Runtime[MacMaestro Runtime]
     Runtime --> Safety[SafetyPolicy]
     Runtime --> Matcher[Semantic Matcher]
-    Runtime --> Backend[AXBackend]
-    Backend --> macOS[macOS Accessibility API]
-    macOS --> Result[UI Mutation]
+    Runtime --> Backend{Backend}
+    Backend -->|production| AX[AXBackend]
+    Backend -->|testing| Mock[MockBackend]
+    AX --> macOS[macOS Accessibility API]
     Runtime --> Trace[RunTrace]
+    Trace --> JSON[to_json / to_ndjson]
 ```
 
 ## License
