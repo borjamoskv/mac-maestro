@@ -8,14 +8,40 @@ version = "0.2.1"
 description = "Semantic-first macOS GUI automation with safety gates and structured traces."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 authors = [
   { name = "Borja Moskv" }
+]
+keywords = [
+  "macos",
+  "accessibility",
+  "automation",
+  "gui-automation",
+  "agent-safety",
+  "semantic-automation",
+  "mcp",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: MacOS X",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Testing",
+  "Topic :: System :: Systems Administration",
 ]
 dependencies = [
   "pydantic>=2.8.0,<3.0.0",
   "mcp>=1.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/borjamoskv/mac-maestro"
+Repository = "https://github.com/borjamoskv/mac-maestro"
+Issues = "https://github.com/borjamoskv/mac-maestro/issues"
 
 [project.optional-dependencies]
 mcp = [
