@@ -1,84 +1,75 @@
-# mac-maestro
+# MAC-MAESTRO 
 
-Semantic-first macOS GUI automation with safety gates and structured traces.
+**Reality Level: C5-REAL** | **Aesthetic: Industrial Noir 2026**
+
+Semantic-first macOS GUI automation with safety gates, zero black-box magic, and structured traces.
 
 > Stop relying on brittle coordinate clicks. `mac-maestro` reads the native macOS Accessibility graph to match UI elements by **intent** — not pixels.
 
-## Why
+## 01 · Execution Mechanics
 
-| | PyAutoGUI / pixel bots | mac-maestro |
-|:---|:---|:---|
-| Targeting | `x: 100, y: 200` | `role="AXButton", title="Save"` |
-| Window moves | Breaks | Works |
-| Resolution changes | Breaks | Works |
-| Safety | None | Immutable policy membrane |
-| Observability | Logs | Structured `RunTrace` (JSON/NDJSON) |
+| Vector | PyAutoGUI / Pixel Bots | MAC-MAESTRO |
+| :--- | :--- | :--- |
+| **Targeting** | `x: 100, y: 200` | `role="AXButton", title="Save"` |
+| **Window moves** | Breaks | Works |
+| **Resolution changes**| Breaks | Works |
+| **Safety** | None | Immutable C5-REAL policy membrane |
+| **Observability** | Standard logs | Structured `RunTrace` (JSON/NDJSON) |
 
-## Features
+## 02 · Capability Matrix
 
-- **Semantic matching** by role, title, value — walks the AX tree, scores candidates
-- **Safety policy** blocks destructive actions (`"Delete"`, `"Format"`) before execution
-- **Dry-run mode** resolves and matches without mutating the UI
-- **Confidence thresholds** with configurable policies: `abort`, `fallback_exact`, `emit_candidates`
-- **Structured traces** — every action emits JSON events; `to_ndjson()` for streaming
-- **Backend abstraction** — `MockBackend` for tests, `AXBackend` for real macOS automation
-- **Native AX execution** — `AXPress` and `AXSetValue` bypass the mouse cursor entirely
+- **Semantic Matching**: Role, title, value targeting. Walks the AX tree, scores candidates deterministically.
+- **Epistemological Kill Switch (Safety Policy)**: Blocks destructive actions (`"Delete"`, `"Format"`) before execution.
+- **Dry-Run Mode**: Resolves and matches without UI mutation.
+- **Confidence Thresholds**: Configurable routing (`abort`, `fallback_exact`, `emit_candidates`).
+- **Structured Traces**: Every action emits JSON events. `to_ndjson()` for high-throughput streaming.
+- **Native AX Execution**: `AXPress` and `AXSetValue` bypass cursor entirely.
 
-## Install
+## 03 · Initialization
 
 ```bash
-pip install mac-maestro              # Core (works anywhere)
-pip install "mac-maestro[macos]"     # + native AX backend (macOS only)
+# Core framework
+pip install mac-maestro              
+
+# + Native AX backend (macOS C5-REAL)
+pip install "mac-maestro[macos]"     
 ```
 
-> ⚠️ **Accessibility Permissions**: The terminal or host app must be granted **Accessibility** access in `System Settings > Privacy & Security > Accessibility`.
+> **[P0] Accessibility Sentinel**: The host environment MUST hold **Accessibility** clearance (`System Settings > Privacy & Security > Accessibility`).
 
-## Quick Start
+## 04 · Usage Vectors
 
-Works on any platform with `MockBackend` — no macOS permissions needed:
+### Base Simulator (C4-SIM)
+Cross-platform MockBackend validation.
 
 ```python
 from mac_maestro import MacMaestro, ClickAction
 from mac_maestro.backends.mock import MockBackend
 from mac_maestro.models import AXNodeSnapshot
 
-# Build a mock UI tree
+# Build mock UI tree
 root = AXNodeSnapshot(
-    element_id="root",
-    role="AXWindow",
-    title="Main",
+    element_id="root", role="AXWindow", title="Main",
     children=[
         AXNodeSnapshot(element_id="save_btn", role="AXButton", title="Save"),
         AXNodeSnapshot(element_id="cancel_btn", role="AXButton", title="Cancel"),
     ],
 )
 
-maestro = MacMaestro(
-    bundle_id="com.example.app",
-    backend=MockBackend(root=root),
-)
-
+maestro = MacMaestro(bundle_id="com.example.app", backend=MockBackend(root=root))
 trace = maestro.run([ClickAction(role="AXButton", title="Save")])
 
-print("✅" if trace.ok else "❌")
+print("C5-REAL" if trace.ok else "C4-FAIL")
 print(trace.to_json())
 ```
 
-## Advanced
-
-### Dry-Run Mode
-
-Resolve elements and score candidates without touching the UI:
-
+### Dry-Run Topology (C4-SIM)
 ```python
 trace = maestro.run(actions, dry_run=True)
-# trace.ok is True, but no UI mutation occurred
+# State: trace.ok=True, UI mutation=0
 ```
 
-### Confidence Thresholds
-
-Reject low-confidence matches before they execute:
-
+### Confidence Gates
 ```python
 maestro = MacMaestro(
     bundle_id="com.apple.TextEdit",
@@ -88,10 +79,7 @@ maestro = MacMaestro(
 )
 ```
 
-### Safety Policy
-
-Block dangerous interactions at the membrane level:
-
+### Epistemic Membrane (Safety)
 ```python
 from mac_maestro.safety import SafetyPolicy
 
@@ -100,30 +88,26 @@ maestro = MacMaestro(bundle_id="...", backend=backend, safety_policy=policy)
 # ClickAction(title="Delete All") → SafetyViolationError
 ```
 
-### NDJSON Traces
-
-Stream trace events for log ingestion:
-
+### Trace Ingestion
 ```python
 print(trace.to_ndjson())
-# One JSON line per event — ready for jq, Datadog, or CORTEX
+# Output ready for jq, Datadog, or CORTEX Persist ingestion
 ```
 
-## Architecture
+## 05 · Architecture Topology
 
 ```mermaid
 graph TD
-    User([Script / Agent]) --> Runtime[MacMaestro Runtime]
-    Runtime --> Safety[SafetyPolicy]
-    Runtime --> Matcher[Semantic Matcher]
-    Runtime --> Backend{Backend}
-    Backend -->|production| AX[AXBackend]
-    Backend -->|testing| Mock[MockBackend]
-    AX --> macOS[macOS Accessibility API]
+    User([Agent/Runtime]) --> Runtime[MacMaestro Core]
+    Runtime --> Safety[SafetyPolicy Guard]
+    Runtime --> Matcher[Semantic Engine]
+    Runtime --> Backend{Substrate}
+    Backend -->|C5-REAL| AX[AXBackend]
+    Backend -->|C4-SIM| Mock[MockBackend]
+    AX --> macOS[macOS Accessibility Graph]
     Runtime --> Trace[RunTrace]
-    Trace --> JSON[to_json / to_ndjson]
+    Trace --> JSON[JSON / NDJSON Stream]
 ```
 
-## License
-
+## 06 · License
 Apache-2.0

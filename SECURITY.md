@@ -1,64 +1,51 @@
-# Security Policy
+# SECURITY.md — THREAT MEMBRANE
 
-## Scope
+**Reality Level: C5-REAL**
 
-MacMaestro interacts with the macOS Accessibility API, which has system-level
-read/write access to every UI application running in the user's session.
-This is an inherently privileged surface.
+## 01 · Operating Scope
 
-Security issues in scope include:
+MacMaestro interfaces with the macOS Accessibility API (AX), wielding system-level read/write clearance across all UI applications in the user session. This is a maximally privileged execution surface.
 
-- **Safety Policy bypass**: Any mechanism that allows a caller to click or
-  trigger destructive elements (e.g., Delete, Format) that would be blocked
-  by the default `SafetyPolicy`.
-- **Privilege escalation via AX**: Exploitation of AX permissions to interact
-  with applications or data outside the caller's intended scope.
-- **Remote Code Execution via untrusted input**: Any path where external or
-  agent-provided content becomes executable via AX actions.
-- **Sensitive data exposure**: Leakage of `AXValue` contents (passwords, tokens,
-  etc.) into the `RunTrace` or logs without the user's knowledge.
+**In-Scope Vectors:**
+- **Safety Policy bypass**: Mechanisms allowing execution of blocked elements (e.g., `Delete`) without explicit override.
+- **Privilege escalation**: Exploitation of AX to leak or mutate data outside the caller's target bundle.
+- **RCE via Input**: Execution of arbitrary code sourced from untrusted agent inputs via AX actions.
+- **Trace Leakage**: Exposure of sensitive `AXValue` data (passwords, tokens) into `RunTrace` or NDJSON streams.
 
-Issues **not** in scope:
+**Out-of-Scope Vectors:**
+- UI cosmetic rendering bugs.
+- Denial-of-Service via payload size (AX is not a hardened endpoint).
+- Downstream vulnerabilities in automated target applications.
 
-- UI visual glitches or cosmetic rendering bugs.
-- Denial-of-service via crafted element trees (AX itself is not a hardened API).
-- Issues in downstream applications being automated (report to those vendors).
+## 02 · AX Privilege Advisory
 
-## Accessibility & Automation Permissions Advisory
+MacMaestro requires **Accessibility** clearance (`System Settings → Privacy & Security → Accessibility`).
+A process with this clearance can inspect and mutate **ALL UI** — including secure inputs, password fields, and OS dialogs.
 
-MacMaestro requires **Accessibility** permissions (`System Settings → Privacy & Security → Accessibility`).
-Any program with this permission can read and potentially mutate **all UI** in the user's session,  
-including password fields, secure inputs, and system dialogs.
+**[P0] Treat Accessibility clearance as root-level user-land access.**
 
-**Treat Accessibility permission as equivalent to full user-land access.**
+Auditing the `SafetyPolicy` is mandatory before attaching MacMaestro to any sovereign agent or autonomous loop.
 
-Only grant this permission to programs you trust. Review `SafetyPolicy` 
-configuration before connecting MacMaestro to any autonomous agent.
+## 03 · Vulnerability Reporting
 
-## Reporting Vulnerabilities
+Do NOT file public issues for security vulnerabilities.
 
-Please **do not** file public GitHub Issues for security vulnerabilities.
-
-Use **GitHub Private Security Advisories** (preferred):
+Use **GitHub Private Security Advisories**:
 [https://github.com/borjamoskv/mac-maestro/security/advisories/new](https://github.com/borjamoskv/mac-maestro/security/advisories/new)
 
-Include:
-- A description of the vulnerability.
-- Reproduction steps.
-- Potential impact.
-- Any proposed fix or mitigation.
+**Required Payload:**
+- Vulnerability description.
+- Reproduction topology.
+- Blast radius / impact.
+- Proposed patch or mitigation vector.
 
-## Disclosure Policy
+## 04 · Disclosure Protocol
 
-We commit to:
-- Acknowledging receipt within **5 business days**.
-- Providing an initial assessment within **15 business days**.
-- Resolving confirmed issues within **90 days** where technically feasible.
-- Coordinating a public disclosure timeline with the reporter.
+- Receipt acknowledgement: **< 5 business days**.
+- Assessment matrix: **< 15 business days**.
+- Resolution window: **< 90 days** (technical feasibility permitting).
+- Reporter credited in release notes (unless anonymity requested).
 
-We will credit reporters in the relevant release notes unless they request
-anonymity.
+## 05 · Hall of Fame
 
-## Hall of Fame
-
-*Empty — be the first.*
+*State: Empty. Become the first.*

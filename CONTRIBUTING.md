@@ -1,31 +1,34 @@
-# Contributing to MacMaestro
+# CONTRIBUTING.md — C5-REAL DIRECTIVES
 
-Thank you for your interest in contributing. *MacMaestro* is built with a primary focus on safety, determinism, and observable execution on macOS.
+**Reality Level: C5-REAL**
 
-## Core Philosophy (The Axioms)
+*MacMaestro* operates as a sovereign entity on macOS. Development focuses on safety, determinism, and observable execution.
 
-1. **Zero Black-Box Magic**. Every UI interaction must leave a trace.
-2. **Safety First**. Never assume a destructive action is intended without explicitly bypassing the `SafetyPolicy`.
-3. **Semantic Over Coordinate**. We rely on the Accessibility API (AX) first and foremost. Coordinates change; semantic roles persist.
+## 01 · Axioms of Interaction
 
-## Development Setup
+1. **Zero Black-Box Magic**: Every UI interaction must yield a deterministic trace.
+2. **Safety Membrane First**: Never bypass the `SafetyPolicy` implicitly. Destructive actions demand explicit clearance.
+3. **Semantic Over Coordinate**: Coordinates mutate; semantic roles persist. AX data is the only source of truth.
+
+## 02 · Forging Substrate
 
 ```bash
-# Clone the repository
 git clone https://github.com/borjamoskv/mac-maestro.git
 cd mac-maestro
 
-# Install in editable mode with all dev dependencies
+# Install strictly in editable mode with dev payloads
 pip install -e ".[dev,mcp]"
 ```
 
-## Pull Request Guidelines
+## 03 · Pull Request Sentinel
 
-- **Add Tests**: If you fix a bug or add a feature, it must have corresponding test coverage.
-- **Maintain Traceability**: Any new action or interaction loop must yield data to the `RunTrace` output.
-- **Update Documentation**: Update the README and docstrings if you change public-facing APIs.
-- **Pass Linting**: Code should adhere to standard Ruff linting rules (`ruff check .`).
+- **Test Coverage**: Bug fixes or features lacking coverage will be rejected.
+- **Trace Continuity**: New execution loops must yield structured data to `RunTrace`.
+- **Documentation Parity**: API changes require immediate `README.md` and docstring updates.
+- **Linting Compliance**: Execute `ruff check .` before submission.
 
-### Architecture Notice
+## 04 · Architecture Epistemology
 
-MacMaestro treats macOS as a potentially hostile and chaotic environment. When you interact with the UI, assume the window might move, the element might disappear, or focus might be stolen. Avoid `time.sleep()` blocks for state propagation; use retry mechanics or explicit wait conditions via `MaestroWorkflow`.
+MacMaestro treats macOS as a high-entropy, chaotic environment. Assume windows move, elements vanish, and focus is stolen.
+- **Do not use `time.sleep()` blocks** for state propagation.
+- **Enforce retry mechanics** or explicit wait conditions via `MaestroWorkflow`.
