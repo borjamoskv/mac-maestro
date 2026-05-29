@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class KeyModifier(str, Enum):
+class KeyModifier(StrEnum):
     COMMAND = "command"
     SHIFT = "shift"
     OPTION = "option"
@@ -55,6 +55,27 @@ class ClickAction(ElementSelector):
     kind: Literal["click"] = "click"
 
 
+class DoubleClickAction(ElementSelector):
+    kind: Literal["double_click"] = "double_click"
+
+
+class RightClickAction(ElementSelector):
+    kind: Literal["right_click"] = "right_click"
+
+
+class HoverAction(ElementSelector):
+    kind: Literal["hover"] = "hover"
+
+
+class ScrollAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["scroll"] = "scroll"
+    direction: Literal["up", "down", "left", "right"] = "down"
+    amount: int = 3
+    target: ElementSelector | None = None
+
+
 class TypeAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -72,7 +93,15 @@ class PressAction(BaseModel):
     modifiers: list[KeyModifier] = Field(default_factory=list)
 
 
-UIAction = ClickAction | TypeAction | PressAction
+UIAction = (
+    ClickAction
+    | DoubleClickAction
+    | RightClickAction
+    | HoverAction
+    | ScrollAction
+    | TypeAction
+    | PressAction
+)
 
 
 class TraceEvent(BaseModel):

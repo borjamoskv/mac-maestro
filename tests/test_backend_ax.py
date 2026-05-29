@@ -1,12 +1,13 @@
-import pytest
-import sys
 import subprocess
+import sys
 import time
 from unittest.mock import patch
 
+import pytest
+
 from mac_maestro import MacMaestro, TypeAction
 from mac_maestro.errors import ActionExecutionError
-from mac_maestro.models import ElementMatch, AXNodeSnapshot
+from mac_maestro.models import AXNodeSnapshot, ElementMatch
 
 try:
     from mac_maestro.backends.ax import AXBackend, AXBackendConfig
@@ -24,7 +25,7 @@ pytestmark = [
 @pytest.fixture
 def run_textedit():
     # Attempt to open TextEdit for tests
-    process = subprocess.Popen(["open", "-a", "TextEdit"])
+    subprocess.Popen(["open", "-a", "TextEdit"])
     time.sleep(1) # Give it time to launch and be reachable
     yield
     # We could kill it here, but it's simpler to just let it be or close it via shortcut if desired.
@@ -35,9 +36,11 @@ def test_permissions_denied_raises_error():
     backend = AXBackend(config=config)
 
     # Patch the access check directly so we don't depend on actual local toggles
-    with patch("mac_maestro.backends.ax.AXIsProcessTrustedWithOptions", return_value=False):
-        with pytest.raises(ActionExecutionError, match="Accessibility permission not granted"):
-            backend.ensure_accessibility_permissions(prompt=False)
+    with (
+        patch("mac_maestro.backends.ax.AXIsProcessTrustedWithOptions", return_value=False),
+        pytest.raises(ActionExecutionError, match="Accessibility permission not granted"),
+    ):
+        backend.ensure_accessibility_permissions(prompt=False)
 
 
 def test_ax_snapshot_click_and_type(run_textedit):
@@ -56,7 +59,7 @@ def test_ax_snapshot_click_and_type(run_textedit):
         pytest.skip("No accessibility permissions to run genuine UI tests.")
     
     # 1. Take snapshot
-    maestro = MacMaestro(bundle_id="com.apple.TextEdit", backend=backend)
+    _ = MacMaestro(bundle_id="com.apple.TextEdit", backend=backend)
     
     # To test actual interaction without changing UI states wildly:
     # Instead of full automation which might fail if 'New Document' isn't visible

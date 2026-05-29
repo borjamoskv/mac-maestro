@@ -4,8 +4,20 @@ from typing import Literal
 
 from .backends.protocol import BackendProtocol
 from .errors import ConfidenceBelowThresholdError, MacMaestroError
-from .matcher import find_best_match, find_all_matches
-from .models import ClickAction, ElementMatch, ElementSelector, PressAction, RunTrace, TypeAction, UIAction
+from .matcher import find_all_matches, find_best_match
+from .models import (
+    ClickAction,
+    DoubleClickAction,
+    ElementMatch,
+    ElementSelector,
+    HoverAction,
+    PressAction,
+    RightClickAction,
+    RunTrace,
+    ScrollAction,
+    TypeAction,
+    UIAction,
+)
 from .safety import SafetyPolicy
 from .trace import TraceCollector
 
@@ -99,6 +111,146 @@ class MacMaestro:
                                 action_kind=action_kind,
                                 message="[dry_run] Click skipped — UI not mutated",
                                 payload={"element_id": matched.element_id},
+                            )
+
+                    case DoubleClickAction():
+                        selector = ElementSelector(**action.model_dump(exclude={"kind"}))
+                        matched = self._resolve_match(selector, idx, action_kind, trace)
+
+                        trace.add(
+                            phase="match",
+                            action_index=idx,
+                            action_kind=action_kind,
+                            message="Element matched for double click",
+                            payload={
+                                **matched.model_dump(mode="json"),
+                                "dry_run": dry_run,
+                            },
+                        )
+
+                        if not dry_run:
+                            self.backend.double_click(matched)
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="Double click executed",
+                                payload={"element_id": matched.element_id},
+                            )
+                        else:
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="[dry_run] Double click skipped — UI not mutated",
+                                payload={"element_id": matched.element_id},
+                            )
+
+                    case RightClickAction():
+                        selector = ElementSelector(**action.model_dump(exclude={"kind"}))
+                        matched = self._resolve_match(selector, idx, action_kind, trace)
+
+                        trace.add(
+                            phase="match",
+                            action_index=idx,
+                            action_kind=action_kind,
+                            message="Element matched for right click",
+                            payload={
+                                **matched.model_dump(mode="json"),
+                                "dry_run": dry_run,
+                            },
+                        )
+
+                        if not dry_run:
+                            self.backend.right_click(matched)
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="Right click executed",
+                                payload={"element_id": matched.element_id},
+                            )
+                        else:
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="[dry_run] Right click skipped — UI not mutated",
+                                payload={"element_id": matched.element_id},
+                            )
+
+                    case HoverAction():
+                        selector = ElementSelector(**action.model_dump(exclude={"kind"}))
+                        matched = self._resolve_match(selector, idx, action_kind, trace)
+
+                        trace.add(
+                            phase="match",
+                            action_index=idx,
+                            action_kind=action_kind,
+                            message="Element matched for hover",
+                            payload={
+                                **matched.model_dump(mode="json"),
+                                "dry_run": dry_run,
+                            },
+                        )
+
+                        if not dry_run:
+                            self.backend.hover(matched)
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="Hover executed",
+                                payload={"element_id": matched.element_id},
+                            )
+                        else:
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="[dry_run] Hover skipped — UI not mutated",
+                                payload={"element_id": matched.element_id},
+                            )
+
+                    case ScrollAction():
+                        matched = None
+                        if action.target is not None:
+                            matched = self._resolve_match(action.target, idx, action_kind, trace)
+                            trace.add(
+                                phase="match",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="Scroll target matched",
+                                payload={
+                                    **matched.model_dump(mode="json"),
+                                    "dry_run": dry_run,
+                                },
+                            )
+
+                        if not dry_run:
+                            self.backend.scroll(action, matched)
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="Scroll executed",
+                                payload={
+                                    "direction": action.direction,
+                                    "amount": action.amount,
+                                    "element_id": matched.element_id if matched else None,
+                                },
+                            )
+                        else:
+                            trace.add(
+                                phase="execute",
+                                action_index=idx,
+                                action_kind=action_kind,
+                                message="[dry_run] Scroll skipped — UI not mutated",
+                                payload={
+                                    "direction": action.direction,
+                                    "amount": action.amount,
+                                    "element_id": matched.element_id if matched else None,
+                                },
                             )
 
                     case TypeAction():
@@ -250,8 +402,7 @@ def _try_exact_match(candidates: list[ElementMatch]) -> ElementMatch | None:
         reasons = candidate.reasons
         if any("exact" in r.lower() for r in reasons):
             return candidate
-        if node.title and node.role:
+        if node.title and node.role and "exact title" in " ".join(reasons).lower():
             # Heuristic: exact title + role in reasons indicates high-fidelity match.
-            if "exact title" in " ".join(reasons).lower():
-                return candidate
+            return candidate
     return None

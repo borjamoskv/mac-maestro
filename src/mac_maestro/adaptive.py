@@ -9,7 +9,13 @@ from .replay import TraceDiff
 
 
 class PlannerAdapter(Protocol):
-    def propose(self, intent: str, *, previous_actions: list[UIAction], feedback: dict[str, Any]) -> list[UIAction]: ...
+    def propose(
+        self,
+        intent: str,
+        *,
+        previous_actions: list[UIAction],
+        feedback: dict[str, Any],
+    ) -> list[UIAction]: ...
 
 
 @dataclass(frozen=True)
@@ -33,7 +39,13 @@ class ConservativeAdapter:
         }
     )
 
-    def propose(self, intent: str, *, previous_actions: list[UIAction], feedback: dict[str, Any]) -> list[UIAction]:
+    def propose(
+        self,
+        intent: str,
+        *,
+        previous_actions: list[UIAction],
+        feedback: dict[str, Any],
+    ) -> list[UIAction]:
         normalized = intent.lower()
         for key, title in self.fallback_titles.items():
             if key in normalized:

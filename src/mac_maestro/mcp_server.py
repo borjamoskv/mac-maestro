@@ -1,13 +1,19 @@
 import asyncio
-import sys
 from typing import Any
 
-from mcp.server import Server, NotificationOptions
-from mcp.server.stdio import stdio_server
 import mcp.types as types
+from mcp.server import NotificationOptions, Server
+from mcp.server.stdio import stdio_server
 
-from mac_maestro import MacMaestro, MaestroWorkflow, ClickAction, TypeAction, PressAction, ElementSelector
+from mac_maestro import (
+    ClickAction,
+    ElementSelector,
+    MacMaestro,
+    PressAction,
+    TypeAction,
+)
 from mac_maestro.errors import MacMaestroError
+
 
 # Initialize MacMaestro with default config
 # We don't specify bundle_id here as tools will take it as an argument
@@ -26,7 +32,12 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "bundle_id": {"type": "string", "description": "The bundle identifier of the app (e.g., com.apple.TextEdit)."},
+                    "bundle_id": {
+                        "type": "string",
+                        "description": (
+                            "The bundle identifier of the app (e.g., com.apple.TextEdit)."
+                        ),
+                    },
                 },
                 "required": ["bundle_id"],
             },
@@ -38,16 +49,25 @@ async def handle_list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "bundle_id": {"type": "string"},
-                    "role": {"type": "string", "description": "AXRole of the element (e.g., AXButton)."},
+                    "role": {
+                        "type": "string",
+                        "description": "AXRole of the element (e.g., AXButton).",
+                    },
                     "title": {"type": "string", "description": "Title or label of the element."},
-                    "description": {"type": "string", "description": "AXDescription of the element."},
+                    "description": {
+                        "type": "string",
+                        "description": "AXDescription of the element.",
+                    },
                 },
                 "required": ["bundle_id"],
             },
         ),
         types.Tool(
             name="type_in_app",
-            description="Types text into the application. If a selector is provided, it tries to focus it first.",
+            description=(
+                "Types text into the application. If a selector is provided, "
+                "it tries to focus it first."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -70,7 +90,10 @@ async def handle_list_tools() -> list[types.Tool]:
                     "key_code": {"type": "integer", "description": "Virtual key code."},
                     "modifiers": {
                         "type": "array",
-                        "items": {"type": "string", "enum": ["command", "shift", "option", "control"]},
+                        "items": {
+                            "type": "string",
+                            "enum": ["command", "shift", "option", "control"],
+                        },
                     },
                 },
                 "required": ["bundle_id", "key_code"],
@@ -114,7 +137,11 @@ async def handle_call_tool(
                     title=arguments.get("title"),
                 )
             
-            action = TypeAction(text=arguments.get("text", ""), selector=selector, clear_first=arguments.get("clear_first", True))
+            action = TypeAction(
+                text=arguments.get("text", ""),
+                selector=selector,
+                clear_first=arguments.get("clear_first", True),
+            )
             trace = maestro.run([action])
             return [types.TextContent(type="text", text=trace.model_dump_json(indent=2))]
 

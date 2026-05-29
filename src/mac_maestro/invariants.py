@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from .models import RunTrace, TraceEvent, UIAction
+from .models import RunTrace, UIAction
 from .replay import ReplayResult, TraceDiff
 
 InvariantSeverity = Literal["info", "warning", "error", "critical"]
@@ -98,7 +98,9 @@ class NoDestructiveTitleInvariant(Invariant):
         violations: list[InvariantViolation] = []
         for index, action in enumerate(actions or []):
             payload = action.model_dump(mode="json")
-            haystack = " ".join(str(value).lower() for value in payload.values() if value is not None)
+            haystack = " ".join(
+                str(val).lower() for val in payload.values() if val is not None
+            )
             matched = [term for term in self.blocked_terms if term in haystack]
             if matched:
                 violations.append(

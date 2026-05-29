@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ..errors import ActionExecutionError
-from ..models import AXNodeSnapshot, ElementMatch, PressAction, TypeAction
+from ..models import AXNodeSnapshot, ElementMatch, PressAction, ScrollAction, TypeAction
 
 
 class MockBackend:
@@ -14,6 +14,15 @@ class MockBackend:
 
     def click(self, match: ElementMatch) -> None:
         self.executed.append({"kind": "click", "element_id": match.element_id})
+
+    def double_click(self, match: ElementMatch) -> None:
+        self.executed.append({"kind": "double_click", "element_id": match.element_id})
+
+    def right_click(self, match: ElementMatch) -> None:
+        self.executed.append({"kind": "right_click", "element_id": match.element_id})
+
+    def hover(self, match: ElementMatch) -> None:
+        self.executed.append({"kind": "hover", "element_id": match.element_id})
 
     def type_text(self, action: TypeAction, match: ElementMatch | None) -> None:
         if match is None and action.target is not None:
@@ -32,5 +41,15 @@ class MockBackend:
                 "kind": "press",
                 "key_code": action.key_code,
                 "modifiers": [m.value for m in action.modifiers],
+            }
+        )
+
+    def scroll(self, action: ScrollAction, match: ElementMatch | None) -> None:
+        self.executed.append(
+            {
+                "kind": "scroll",
+                "direction": action.direction,
+                "amount": action.amount,
+                "element_id": None if match is None else match.element_id,
             }
         )

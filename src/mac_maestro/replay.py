@@ -3,7 +3,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from .models import ClickAction, ElementMatch, PressAction, RunTrace, TraceEvent, TypeAction, UIAction
+from .models import (
+    ClickAction,
+    DoubleClickAction,
+    ElementMatch,
+    HoverAction,
+    PressAction,
+    RightClickAction,
+    RunTrace,
+    ScrollAction,
+    TraceEvent,
+    TypeAction,
+    UIAction,
+)
 from .runtime import MacMaestro
 
 DriftSeverity = Literal["none", "low", "medium", "high", "critical"]
@@ -138,8 +150,10 @@ class TraceDiffEngine:
                 )
             )
 
-        for idx, (original, replayed) in enumerate(zip(original_events, replayed_events, strict=False)):
-            findings.extend(self._compare_event(idx, original, replayed))
+        for idx, (orig, repl) in enumerate(
+            zip(original_events, replayed_events, strict=False)
+        ):
+            findings.extend(self._compare_event(idx, orig, repl))
         return findings
 
     def _compare_event(
@@ -210,6 +224,14 @@ def _deserialize_actions(envelope: dict[str, Any]) -> list[UIAction]:
         kind = raw.get("kind")
         if kind == "click":
             actions.append(ClickAction(**raw))
+        elif kind == "double_click":
+            actions.append(DoubleClickAction(**raw))
+        elif kind == "right_click":
+            actions.append(RightClickAction(**raw))
+        elif kind == "hover":
+            actions.append(HoverAction(**raw))
+        elif kind == "scroll":
+            actions.append(ScrollAction(**raw))
         elif kind == "type":
             actions.append(TypeAction(**raw))
         elif kind == "press":
@@ -239,7 +261,9 @@ def _compare_match_payload(
 
     original_confidence = original.get("confidence")
     replayed_confidence = replayed.get("confidence")
-    if isinstance(original_confidence, int | float) and isinstance(replayed_confidence, int | float):
+    is_orig_num = isinstance(original_confidence, int | float)
+    is_repl_num = isinstance(replayed_confidence, int | float)
+    if is_orig_num and is_repl_num:
         delta = abs(float(original_confidence) - float(replayed_confidence))
         if delta >= 0.2:
             findings.append(

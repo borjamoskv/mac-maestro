@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from typing import Protocol
 
-from ..models import AXNodeSnapshot, ElementMatch, PressAction, TypeAction
+from ..models import AXNodeSnapshot, ElementMatch, PressAction, ScrollAction, TypeAction
 
 
 class BackendProtocol(Protocol):
@@ -10,6 +8,14 @@ class BackendProtocol(Protocol):
 
     def click(self, match: ElementMatch) -> None: ...
 
+    def double_click(self, match: ElementMatch) -> None: ...
+
+    def right_click(self, match: ElementMatch) -> None: ...
+
+    def hover(self, match: ElementMatch) -> None: ...
+
     def type_text(self, action: TypeAction, match: ElementMatch | None) -> None: ...
 
     def press(self, action: PressAction) -> None: ...
+
+    def scroll(self, action: ScrollAction, match: ElementMatch | None) -> None: ...

@@ -1,11 +1,30 @@
 from __future__ import annotations
 
+import contextlib
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
+
+from AppKit import NSRunningApplication  # type: ignore
+from Quartz import (  # type: ignore
+    CGEventCreateKeyboardEvent,
+    CGEventCreateMouseEvent,
+    CGEventKeyboardSetUnicodeString,
+    CGEventPost,
+    CGPointMake,
+    kCGEventFlagMaskAlternate,
+    kCGEventFlagMaskCommand,
+    kCGEventFlagMaskControl,
+    kCGEventFlagMaskShift,
+    kCGEventLeftMouseDown,
+    kCGEventLeftMouseUp,
+    kCGEventMouseMoved,
+    kCGHIDEventTap,
+)
 
 from ..errors import ActionExecutionError
-from ..models import AXNodeSnapshot, ElementMatch, PressAction, TypeAction
+from ..models import AXNodeSnapshot, ElementMatch, PressAction, ScrollAction, TypeAction
 
 # PyObjC naming is mildly cursed.
 # Depending on the installed framework split, AX symbols may come from
@@ -43,24 +62,6 @@ kAXTrustedCheckOptionPrompt = "AXTrustedCheckOptionPrompt"
 kAXValueAttribute = "AXValue"
 kAXVisibleAttribute = "AXVisible"
 kAXWindowsAttribute = "AXWindows"
-
-from AppKit import NSRunningApplication  # type: ignore
-from Quartz import (  # type: ignore
-    CGEventCreateKeyboardEvent,
-    CGEventCreateMouseEvent,
-    CGEventKeyboardSetUnicodeString,
-    CGEventPost,
-    CGPointMake,
-    kCGEventFlagMaskAlternate,
-    kCGEventFlagMaskCommand,
-    kCGEventFlagMaskControl,
-    kCGEventFlagMaskShift,
-    kCGEventKeyDown,
-    kCGEventLeftMouseDown,
-    kCGEventLeftMouseUp,
-    kCGEventMouseMoved,
-    kCGHIDEventTap,
-)
 
 # Mouse event subtype sometimes exposed as kCGMouseButtonLeft, sometimes raw 0.
 try:  # pragma: no cover
@@ -129,6 +130,24 @@ class AXBackend:
         self._mouse_left_click(point["x"], point["y"])
         self._sleep_action_delay()
 
+    def double_click(self, match: ElementMatch) -> None:
+        element = self._resolve_cached_element(match.element_id)
+        point = self._element_center(element)
+        self._mouse_left_double_click(point["x"], point["y"])
+        self._sleep_action_delay()
+
+    def right_click(self, match: ElementMatch) -> None:
+        element = self._resolve_cached_element(match.element_id)
+        point = self._element_center(element)
+        self._mouse_right_click(point["x"], point["y"])
+        self._sleep_action_delay()
+
+    def hover(self, match: ElementMatch) -> None:
+        element = self._resolve_cached_element(match.element_id)
+        point = self._element_center(element)
+        self._mouse_move(point["x"], point["y"])
+        self._sleep_action_delay()
+
     def type_text(self, action: TypeAction, match: ElementMatch | None) -> None:
         target = None if match is None else self._resolve_cached_element(match.element_id)
 
@@ -179,6 +198,107 @@ class AXBackend:
         CGEventPost(kCGHIDEventTap, down)
         CGEventPost(kCGHIDEventTap, up)
         self._sleep_action_delay()
+
+    def scroll(self, action: ScrollAction, match: ElementMatch | None) -> None:
+        if match is not None:
+            element = self._resolve_cached_element(match.element_id)
+            point = self._element_center(element)
+            self._mouse_move(point["x"], point["y"])
+            self._sleep_action_delay()
+
+        try:
+            from Quartz import CGEventCreateScrollWheelEvent
+        except ImportError:
+            CGEventCreateScrollWheelEvent = None
+
+        if CGEventCreateScrollWheelEvent is not None:
+            y_amount = 0
+            x_amount = 0
+            if action.direction == "up":
+                y_amount = action.amount
+            elif action.direction == "down":
+                y_amount = -action.amount
+            elif action.direction == "left":
+                x_amount = -action.amount
+            elif action.direction == "right":
+                x_amount = action.amount
+
+            try:
+                if y_amount != 0:
+                    evt = CGEventCreateScrollWheelEvent(None, 0, 1, y_amount)
+                else:
+                    evt = CGEventCreateScrollWheelEvent(None, 0, 2, 0, x_amount)
+
+                if evt is not None:
+                    CGEventPost(kCGHIDEventTap, evt)
+                    self._sleep_action_delay()
+                    return
+            except Exception:
+                pass
+
+        # Fallback using keyboard arrows
+        key_map = {"up": 126, "down": 125, "left": 123, "right": 124}
+        key_code = key_map.get(action.direction, 125)
+        for _ in range(action.amount):
+            self._send_key_combo(key_code=key_code, flags=0)
+            time.sleep(0.02)
+        self._sleep_action_delay()
+
+    def _mouse_left_double_click(self, x: float, y: float) -> None:
+        point = CGPointMake(x, y)
+        try:
+            from Quartz import CGEventSetIntegerValueField, kCGMouseEventClickState
+        except ImportError:
+            CGEventSetIntegerValueField = None
+            kCGMouseEventClickState = None
+
+        down1 = CGEventCreateMouseEvent(None, kCGEventLeftMouseDown, point, kCGMouseButtonLeft)
+        up1 = CGEventCreateMouseEvent(None, kCGEventLeftMouseUp, point, kCGMouseButtonLeft)
+        down2 = CGEventCreateMouseEvent(None, kCGEventLeftMouseDown, point, kCGMouseButtonLeft)
+        up2 = CGEventCreateMouseEvent(None, kCGEventLeftMouseUp, point, kCGMouseButtonLeft)
+
+        if CGEventSetIntegerValueField is not None and kCGMouseEventClickState is not None:
+            try:
+                CGEventSetIntegerValueField(down1, kCGMouseEventClickState, 1)
+                CGEventSetIntegerValueField(up1, kCGMouseEventClickState, 1)
+                CGEventSetIntegerValueField(down2, kCGMouseEventClickState, 2)
+                CGEventSetIntegerValueField(up2, kCGMouseEventClickState, 2)
+            except Exception:
+                pass
+
+        if down1 is None or up1 is None or down2 is None or up2 is None:
+            raise ActionExecutionError("Failed to create double click mouse events.")
+
+        CGEventPost(kCGHIDEventTap, down1)
+        CGEventPost(kCGHIDEventTap, up1)
+        time.sleep(0.05)
+        CGEventPost(kCGHIDEventTap, down2)
+        CGEventPost(kCGHIDEventTap, up2)
+
+    def _mouse_right_click(self, x: float, y: float) -> None:
+        point = CGPointMake(x, y)
+        try:
+            from Quartz import kCGEventRightMouseDown, kCGEventRightMouseUp, kCGMouseButtonRight
+        except ImportError:
+            kCGEventRightMouseDown = 3  # type: ignore[assignment]
+            kCGEventRightMouseUp = 4  # type: ignore[assignment]
+            kCGMouseButtonRight = 1  # type: ignore[assignment]
+
+        down = CGEventCreateMouseEvent(None, kCGEventRightMouseDown, point, kCGMouseButtonRight)
+        up = CGEventCreateMouseEvent(None, kCGEventRightMouseUp, point, kCGMouseButtonRight)
+
+        if down is None or up is None:
+            raise ActionExecutionError("Failed to create right click mouse events.")
+
+        CGEventPost(kCGHIDEventTap, down)
+        CGEventPost(kCGHIDEventTap, up)
+
+    def _mouse_move(self, x: float, y: float) -> None:
+        point = CGPointMake(x, y)
+        move = CGEventCreateMouseEvent(None, kCGEventMouseMoved, point, kCGMouseButtonLeft)
+        if move is None:
+            raise ActionExecutionError("Failed to create mouse move events.")
+        CGEventPost(kCGHIDEventTap, move)
 
     # -------------------------------------------------------------------------
     # Permissions / app resolution
@@ -308,7 +428,9 @@ class AXBackend:
         width, height = self._extract_size(size)
 
         if pos_x is None or pos_y is None or width is None or height is None:
-            raise ActionExecutionError("Unable to resolve element screen coordinates for click fallback.")
+            raise ActionExecutionError(
+                "Unable to resolve element screen coordinates for click fallback."
+            )
 
         return {
             "x": pos_x + (width / 2.0),
@@ -507,16 +629,12 @@ class AXBackend:
                 token += ch
             else:
                 if token and token not in {"-", ".", "-."}:
-                    try:
+                    with contextlib.suppress(ValueError):
                         out.append(float(token))
-                    except ValueError:
-                        pass
                 token = ""
         if token and token not in {"-", ".", "-."}:
-            try:
+            with contextlib.suppress(ValueError):
                 out.append(float(token))
-            except ValueError:
-                pass
         return out
 
     def _sleep_action_delay(self) -> None:
