@@ -7,9 +7,13 @@ from mcp.server.stdio import stdio_server
 
 from mac_maestro import (
     ClickAction,
+    DoubleClickAction,
     ElementSelector,
+    HoverAction,
     MacMaestro,
     PressAction,
+    RightClickAction,
+    ScrollAction,
     TypeAction,
 )
 from mac_maestro.errors import MacMaestroError
@@ -99,6 +103,91 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["bundle_id", "key_code"],
             },
         ),
+        types.Tool(
+            name="double_click_element",
+            description="Performs a double click on a UI element.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bundle_id": {"type": "string"},
+                    "role": {
+                        "type": "string",
+                        "description": "AXRole of the element (e.g., AXButton).",
+                    },
+                    "title": {"type": "string", "description": "Title of the element."},
+                    "description": {
+                        "type": "string",
+                        "description": "AXDescription of the element.",
+                    },
+                },
+                "required": ["bundle_id"],
+            },
+        ),
+        types.Tool(
+            name="right_click_element",
+            description="Performs a right click on a UI element.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bundle_id": {"type": "string"},
+                    "role": {
+                        "type": "string",
+                        "description": "AXRole of the element (e.g., AXButton).",
+                    },
+                    "title": {"type": "string", "description": "Title of the element."},
+                    "description": {
+                        "type": "string",
+                        "description": "AXDescription of the element.",
+                    },
+                },
+                "required": ["bundle_id"],
+            },
+        ),
+        types.Tool(
+            name="hover_element",
+            description="Hovers the mouse pointer over a UI element.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bundle_id": {"type": "string"},
+                    "role": {
+                        "type": "string",
+                        "description": "AXRole of the element (e.g., AXButton).",
+                    },
+                    "title": {"type": "string", "description": "Title of the element."},
+                    "description": {
+                        "type": "string",
+                        "description": "AXDescription of the element.",
+                    },
+                },
+                "required": ["bundle_id"],
+            },
+        ),
+        types.Tool(
+            name="scroll_in_app",
+            description=(
+                "Scrolls in a specified direction within the application, "
+                "optionally targeting a UI element."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bundle_id": {"type": "string"},
+                    "direction": {
+                        "type": "string",
+                        "enum": ["up", "down", "left", "right"],
+                        "default": "down",
+                    },
+                    "amount": {"type": "integer", "default": 3},
+                    "role": {
+                        "type": "string",
+                        "description": "AXRole of the target scrollable container element.",
+                    },
+                    "title": {"type": "string", "description": "Title of the target element."},
+                },
+                "required": ["bundle_id"],
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -141,6 +230,48 @@ async def handle_call_tool(
                 text=arguments.get("text", ""),
                 selector=selector,
                 clear_first=arguments.get("clear_first", True),
+            )
+            trace = maestro.run([action])
+            return [types.TextContent(type="text", text=trace.model_dump_json(indent=2))]
+
+        elif name == "double_click_element":
+            selector = ElementSelector(
+                role=arguments.get("role"),
+                title=arguments.get("title"),
+                description=arguments.get("description"),
+            )
+            trace = maestro.run([DoubleClickAction(selector=selector)])
+            return [types.TextContent(type="text", text=trace.model_dump_json(indent=2))]
+
+        elif name == "right_click_element":
+            selector = ElementSelector(
+                role=arguments.get("role"),
+                title=arguments.get("title"),
+                description=arguments.get("description"),
+            )
+            trace = maestro.run([RightClickAction(selector=selector)])
+            return [types.TextContent(type="text", text=trace.model_dump_json(indent=2))]
+
+        elif name == "hover_element":
+            selector = ElementSelector(
+                role=arguments.get("role"),
+                title=arguments.get("title"),
+                description=arguments.get("description"),
+            )
+            trace = maestro.run([HoverAction(selector=selector)])
+            return [types.TextContent(type="text", text=trace.model_dump_json(indent=2))]
+
+        elif name == "scroll_in_app":
+            target = None
+            if arguments.get("role") or arguments.get("title"):
+                target = ElementSelector(
+                    role=arguments.get("role"),
+                    title=arguments.get("title"),
+                )
+            action = ScrollAction(
+                direction=arguments.get("direction", "down"),
+                amount=arguments.get("amount", 3),
+                target=target,
             )
             trace = maestro.run([action])
             return [types.TextContent(type="text", text=trace.model_dump_json(indent=2))]
