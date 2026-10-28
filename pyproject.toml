@@ -35,7 +35,9 @@ classifiers = [
 ]
 dependencies = [
   "pydantic>=2.8.0,<3.0.0",
-  "mcp>=1.0.0",
+  "mcp>=1.28.1,<2.0.0",
+  "anyio>=4.14.2",
+  "PyJWT>=2.15.0",
 ]
 
 [project.urls]
@@ -45,7 +47,7 @@ Issues = "https://github.com/borjamoskv/mac-maestro/issues"
 
 [project.optional-dependencies]
 mcp = [
-  "mcp[cli]>=1.0.0",
+  "mcp[cli]>=1.28.1,<2.0.0",
 ]
 macos = [
   "pyobjc-core>=10.3; platform_system == 'Darwin'",
